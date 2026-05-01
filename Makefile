@@ -1,6 +1,6 @@
 PY := bin/python
 
-install: $(VENV)
+install:
 	@if [ ! -d bin ] ; \
 		then echo "No virtual environment found. Creating one..." ; \
 		virtualenv . \
@@ -13,7 +13,7 @@ run:
 	@$(PY) src/__main__.py
 
 clean:
-	rm -rf $(VENV)
+	rm -rf bin lib pyvenv.cfg etc share
 
 build:
 	@$(PY) -m build
