@@ -51,3 +51,7 @@ $ python -m build
 # Upload the package to pypi
 $ python -m twine upload --repository pypi dist/*
 ```
+
+or simply
+
+`make build`
