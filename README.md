@@ -6,7 +6,7 @@
 
 Consider the folder of repositories shown below. `newspyper`
 
-1. Starts with a YAML config file where I can specify the location of this source folder.
+1. Starts with a YAML config file where the user can specify the location of this source folder.
 2. Tracks the last processed commit for each repository using a state file (`.newspyper_state.json`).
 3. On each run, collects all new commits and the combined diff since the last execution.
 4. Sends the commit history and diff, along with repository information (name, URL) and date, to OpenAI's GPT-4o to generate a natural-language summary.
