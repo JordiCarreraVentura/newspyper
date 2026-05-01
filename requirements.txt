@@ -1,0 +1,7 @@
+PyYAML
+pyyaml
+build
+gitpython
+openai
+python-dotenv
+twine

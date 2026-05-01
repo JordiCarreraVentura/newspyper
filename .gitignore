@@ -1,0 +1,10 @@
+# MacOS system files
+.DS_Store
+
+# Python virtual environment
+bin/*
+lib/*
+pyvenv.cfg
+
+# Configuration YAML file
+config.yaml
