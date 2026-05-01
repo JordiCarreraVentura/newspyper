@@ -6,5 +6,9 @@ bin/*
 lib/*
 pyvenv.cfg
 
-# Configuration YAML file
+# Environment files
 config.yaml
+.env
+
+# Summaries
+doc/*

@@ -36,8 +36,11 @@ repos
 ## Installation
 
 1. Duplicate `config_template.yaml` as `config.yaml`.
-2. Set the values.
+   - Set the values.
+2. Duplicate `env_template` as `.env`.
+   -  Set the value of the OpenAI API key.
 3. Run `make install`.
+4. Run `make run`.
 
 
 ## Release
