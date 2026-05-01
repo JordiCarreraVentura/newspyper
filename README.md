@@ -1,5 +1,7 @@
 # Newspyper
 
+[Link to GitHub repository](https://github.com/JordiCarreraVentura/newspyper)
+
 ## User specifications (_prompt_)
 
 Consider the folder of repositories shown below. `newspyper`
@@ -20,11 +22,7 @@ repos
 ├── awesome-datascience
 ├── awesome-devops
 ├── awesome-llm-apps
-├── awesome-mac
-├── awesome-production-machine-learning
-├── awesome-python
-├── claude-quickstarts
-├── developer-roadmap
+├── ...
 ├── free-for-dev
 ├── open-source-mac-os-apps
 ├── papers-we-love
@@ -36,25 +34,19 @@ repos
 ## Installation
 
 1. Duplicate `config_template.yaml` as `config.yaml`.
-   - Set the values.
+   1. Set the value of the root folder containing the target repositories (`repos_root`).
+   2. The output path (`output_path`) can remain the same. Change if there is a more suitable one.
+   3. `open_on_complete = true` is currently supported only on Apple systems having the `open` command.
+      It must be adapted for Ubuntu systems.
 2. Duplicate `env_template` as `.env`.
    -  Set the value of the OpenAI API key.
 3. Run `make install`.
 4. Run `make run`.
 
 
-## Release
+## Next steps
 
-If any dependencies are required, edit the `pyproject.toml` file, `[project]` field, and add a `dependencies` key with a `List[str]` value, where each string is a `pip`-readable dependency.
-
-```
-# Build the package before uploading (from the package's root folder)
-$ python -m build 
-
-# Upload the package to pypi
-$ python -m twine upload --repository pypi dist/*
-```
-
-or simply
-
-`make build`
+1. Add support for **Ubuntu** systems in `open_on_complete`.
+2. Alert the user about repositories that **haven't updated recently**.
+3. Add support for **non-repository websites**.
+4. Add a **table** with a structured recap of the summaries.

@@ -2,7 +2,7 @@
 repos_root: ""
 
 # Where to save the final summary
-output_path: "./weekly_summary.md"
+output_path: "./summaries/weekly_summary.md"
 
 # System settings
 open_on_complete: false

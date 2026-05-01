@@ -12,3 +12,4 @@ config.yaml
 
 # Summaries
 doc/*
+.newspyper_state.json

@@ -10,7 +10,7 @@ install: $(VENV)
 	$(PY) -m pip install -r requirements.txt
 
 run:
-	@$(PY) src/newspyper/__main__.py
+	@$(PY) src/__main__.py
 
 clean:
 	rm -rf $(VENV)
