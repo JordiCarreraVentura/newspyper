@@ -3,9 +3,9 @@ PY := bin/python
 install:
 	@if [ ! -d bin ] ; \
 		then echo "No virtual environment found. Creating one..." ; \
-		virtualenv . \
+		virtualenv . ; \
 		$(PY) -m pip install --upgrade pip ; \
-	fi
+	fi ;
 	@echo "Installing dependencies..."
 	$(PY) -m pip install -r requirements.txt
 
