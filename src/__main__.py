@@ -119,6 +119,12 @@ def main():
     config = load_config()
     client = OpenAI()
     state = load_state()
+
+    blacklist = config.get('blacklist', []) or []
+    if all(isinstance(item, dict) for item in blacklist):
+        blacklisted_names = {item.get('name') for item in blacklist if item.get('name')}
+    else:
+        blacklisted_names = {str(item) for item in blacklist}
     
     root_dir = config['repos_root']
     subfolders = [os.path.join(root_dir, f) for f in os.listdir(root_dir) 
@@ -131,23 +137,30 @@ def main():
         if not os.path.exists(os.path.join(folder, ".git")):
             continue
             
-        print(f"Processing {os.path.basename(folder)}...")
+        repo_name = os.path.basename(folder)
+        print(f"Processing {repo_name}...")
         repo_data = get_repo_diff(folder, state)
         
         if repo_data:
-            if (repo_data['diff'] and repo_data['diff'].strip()) or (repo_data['commits'] and repo_data['commits'].strip()):
-                summary = summarize_with_gpt(client, repo_data)
-                final_report += f"## {repo_data['name']}\n"
-                final_report += f"**Remote:** {repo_data['url']}\n\n"
-                final_report += f"{summary}\n\n"
-                final_report += "---\n\n"
-                has_changes = True
+            if repo_name not in blacklisted_names:
+                if (repo_data['diff'] and repo_data['diff'].strip()) or (repo_data['commits'] and repo_data['commits'].strip()):
+                    summary = summarize_with_gpt(client, repo_data)
+                    final_report += f"## {repo_data['name']}\n"
+                    final_report += f"**Remote:** {repo_data['url']}\n\n"
+                    final_report += f"{summary}\n\n"
+                    final_report += "---\n\n"
+                    has_changes = True
             
             # Update state with the latest commit
             state[repo_data['name']] = repo_data['current_commit']
 
     if not has_changes:
         final_report += "No new commits across all tracked repositories.\n"
+
+    if blacklisted_names:
+        final_report += "\n## Excluded repositories\n"
+        for name in sorted(blacklisted_names):
+            final_report += f"- {name}\n"
 
     save_state(state)
 
