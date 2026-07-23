@@ -10,19 +10,17 @@ from openai import OpenAI
 
 load_dotenv()
 
-STATE_FILE = ".newspyper_state.json"
-
-def load_state():
-    if os.path.exists(STATE_FILE):
+def load_state(state_file):
+    if os.path.exists(state_file):
         try:
-            with open(STATE_FILE, "r") as f:
+            with open(state_file, "r") as f:
                 return json.load(f)
         except Exception:
             pass
     return {}
 
-def save_state(state):
-    with open(STATE_FILE, "w") as f:
+def save_state(state, state_file):
+    with open(state_file, "w") as f:
         json.dump(state, f, indent=4)
 
 def load_config():
@@ -104,9 +102,23 @@ def summarize_with_gpt(client, repo_info):
     {repo_info['diff'][:4000]} # Truncated to avoid token limits
 
     Instructions:
-    1. Provide a natural-language summary of what changed.
-    2. Use Markdown formatting.
-    3. Be concise but informative.
+    1. Use Markdown formatting.
+       - Leave a blank line between list bocks.
+       - Indent lists with at least 3 spaces.
+       - Don't use the ```markdown\n...``` format tag for the summary.
+          - If considering to do so at all, do it only for embedded information.
+    2. Provide a natural-language breakdown of what changed.
+    3. Avoid adding a generic summary at the beginning and/or at the end of the update.
+    4. Focus on the facts and the specifics.
+       - Prefer bullet point lists.
+       - Don't opine.
+       - Don't speculate.
+    5. Do NOT include any updates about
+       - bug fixes
+       - maintenance tasks
+       - version bumps
+       - CD/CI workflow updates.
+    6. DO include updates about new features.
     """
 
     response = client.chat.completions.create(
@@ -117,8 +129,9 @@ def summarize_with_gpt(client, repo_info):
 
 def main():
     config = load_config()
+    state_file = config.get('state_file', ".newspyper_state.json")
     client = OpenAI()
-    state = load_state()
+    state = load_state(state_file)
 
     blacklist = config.get('blacklist', []) or []
     if all(isinstance(item, dict) for item in blacklist):
@@ -133,7 +146,8 @@ def main():
     final_report = f"# Multi-Repo Change Summary - {datetime.now().strftime('%Y-%m-%d')}\n\n"
     has_changes = False
 
-    for folder in subfolders:
+    # for folder in subfolders:
+    for folder in subfolders[:1]:
         if not os.path.exists(os.path.join(folder, ".git")):
             continue
             
@@ -162,7 +176,7 @@ def main():
         for name in sorted(blacklisted_names):
             final_report += f"- {name}\n"
 
-    save_state(state)
+    save_state(state, state_file)
 
     # Generate a timestamped filename so we don't overwrite previous runs
     base_path, ext = os.path.splitext(config['output_path'])
