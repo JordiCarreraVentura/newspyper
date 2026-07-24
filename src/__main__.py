@@ -146,8 +146,7 @@ def main():
     final_report = f"# Multi-Repo Change Summary - {datetime.now().strftime('%Y-%m-%d')}\n\n"
     has_changes = False
 
-    # for folder in subfolders:
-    for folder in subfolders[:1]:
+    for folder in subfolders:
         if not os.path.exists(os.path.join(folder, ".git")):
             continue
             
