@@ -2,7 +2,7 @@
 
 REPOS_DIR="/Users/jordi/Documents/Ideas/Consejos/Cacharrería/cámaras acorazadas de Obsidian/repos"
 FINAL_DIR="/Users/jordi/Laboratorio/Python/newspyper"
-BATCH_SIZE=10
+BATCH_SIZE=3
 
 cd "$REPOS_DIR" || exit 1
 
@@ -22,7 +22,7 @@ for repo in */ ; do
     wait
     count=0
 
-    sleep_time=$(awk 'BEGIN { srand(); print int(3 + rand() * 8) }')
+    sleep_time=$(awk 'BEGIN { srand(); print int(10 + rand() * 10 + rand() * 10) }')
     echo
     echo "Sleeping $sleep_time seconds before next batch..."
     sleep "$sleep_time"
