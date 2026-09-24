@@ -10,6 +10,10 @@ open_on_complete: false
 # Path to the state file (JSON) that tracks the last checked commit per repo
 state_file: ".newspyper_state.json"
 
+# Number of days without commits after which a repository is listed in the
+# report under "Inactive repositories"
+inactive_days: 90
+
 # List of repositories to exclude from summarization
 blacklist:
   - "repository_name"

@@ -36,8 +36,11 @@ repos
 1. Duplicate `config_template.yaml` as `config.yaml`.
    1. Set the value of the root folder containing the target repositories (`repos_root`).
    2. The output path (`output_path`) can remain the same. Change if there is a more suitable one.
-   3. `open_on_complete = true` is currently supported only on Apple systems having the `open` command.
-      It must be adapted for Ubuntu systems.
+   3. `open_on_complete = true` opens the generated report automatically with the system's default
+      viewer. Supported on macOS (`open`) and Linux/Ubuntu (`xdg-open`).
+   4. Optional: set `inactive_days` (default: 90) to be alerted about repositories that
+      haven't been updated in the last N days. They are listed in the report's
+      "Inactive repositories" section.
 2. Duplicate `env_template` as `.env`.
    -  Set the value of the OpenAI API key.
 3. Run `make install`.
@@ -46,7 +49,11 @@ repos
 
 ## Next steps
 
-1. Add support for **Ubuntu** systems in `open_on_complete`.
-2. Alert the user about repositories that **haven't updated recently**.
-3. Add support for **non-repository websites**.
-4. Add a **table** with a structured recap of the summaries.
+1. Add support for **non-repository websites**.
+2. Add a **table** with a structured recap of the summaries.
+
+
+## Change log
+
+1. Added support for **Ubuntu** systems in `open_on_complete`.
+2. Added an alert about repositories that **haven't updated recently**.

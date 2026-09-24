@@ -1,8 +1,10 @@
 import os
+import sys
 import json
 import yaml
+import shutil
 import subprocess
-from datetime import datetime
+from datetime import datetime, timezone
 
 from dotenv import load_dotenv
 from git import Repo
@@ -22,6 +24,32 @@ def load_state(state_file):
 def save_state(state, state_file):
     with open(state_file, "w") as f:
         json.dump(state, f, indent=4)
+
+def open_report(file_path):
+    if sys.platform == "darwin":
+        command = ["open", file_path]
+    elif sys.platform.startswith("linux"):
+        if not shutil.which("xdg-open"):
+            print("Warning: 'xdg-open' not found, cannot open the report.")
+            return
+        command = ["xdg-open", file_path]
+    elif sys.platform.startswith("win"):
+        os.startfile(file_path)
+        return
+    else:
+        print(f"Warning: no supported command to open the report on {sys.platform}.")
+        return
+    try:
+        subprocess.run(command, check=False)
+    except Exception as e:
+        print(f"Warning: failed to open the report: {e}")
+
+def get_last_commit_date(repo_path):
+    try:
+        repo = Repo(repo_path)
+        return repo.head.commit.committed_datetime
+    except Exception:
+        return None
 
 def load_config():
     with open("config.yaml", "r") as f:
@@ -146,6 +174,10 @@ def main():
     final_report = f"# Multi-Repo Change Summary - {datetime.now().strftime('%Y-%m-%d')}\n\n"
     has_changes = False
 
+    inactive_days = config.get('inactive_days', 90)
+    now = datetime.now(timezone.utc)
+    inactive = []
+
     for folder in subfolders:
         if not os.path.exists(os.path.join(folder, ".git")):
             continue
@@ -153,6 +185,11 @@ def main():
         repo_name = os.path.basename(folder)
         print(f"Processing {repo_name}...")
         repo_data = get_repo_diff(folder, state)
+
+        if repo_name not in blacklisted_names:
+            last_commit_date = get_last_commit_date(folder)
+            if last_commit_date and (now - last_commit_date).days >= inactive_days:
+                inactive.append((repo_name, last_commit_date.date().isoformat()))
         
         if repo_data:
             if repo_name not in blacklisted_names:
@@ -175,6 +212,12 @@ def main():
         for name in sorted(blacklisted_names):
             final_report += f"- {name}\n"
 
+    if inactive:
+        inactive.sort(key=lambda x: (x[1], x[0]))
+        final_report += "\n## Inactive repositories\n"
+        for name, last_update in inactive:
+            final_report += f"- {name} (last updated: {last_update})\n"
+
     save_state(state, state_file)
 
     # Generate a timestamped filename so we don't overwrite previous runs
@@ -191,9 +234,9 @@ def main():
 
     print(f"Summary saved to {timestamped_output_path}")
 
-    # Open on Mac if requested
+    # Open the report automatically if requested
     if config.get('open_on_complete'):
-        subprocess.run(["open", timestamped_output_path])
+        open_report(timestamped_output_path)
 
 
 if __name__ == "__main__":
