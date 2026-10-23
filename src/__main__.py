@@ -12,6 +12,46 @@ from openai import OpenAI
 
 load_dotenv()
 
+# Registry of supported LLM providers. Both are reached through the same OpenAI
+# SDK; DeepSeek only differs by its base_url, default model and thinking toggle.
+PROVIDERS = {
+    "openai": {
+        "api_key_env": "OPENAI_API_KEY",
+        "base_url": None,
+        "default_model": "gpt-6.1-sol",
+        "extra_body": None,
+    },
+    "deepseek": {
+        "api_key_env": "DEEPSEEK_API_KEY",
+        "base_url": "https://api.deepseek.com",
+        "default_model": "deepseek-v4-pro",
+        "extra_body": {"thinking": {"type": "enabled"}},
+    },
+}
+
+# The model replies with exactly this line when a set of changes contains nothing
+# worth reporting (e.g. only bug fixes, CI or version bumps). It lets us skip the
+# whole repository section instead of emitting an empty heading.
+NOTHING_NOTABLE = "Nothing notable to report."
+
+# Upper bound on how many characters of a diff are sent to the model. Modern
+# models have very large context windows, so this can be raised freely: a larger
+# budget means fewer changes are silently dropped from the summary.
+MAX_DIFF_CHARS = 40000
+
+
+def resolve_provider_model(config):
+    """Return (provider_name, provider_spec, model) for the configured provider."""
+    provider = (config.get("provider") or "openai").lower()
+    if provider not in PROVIDERS:
+        raise SystemExit(
+            f"Unknown provider '{provider}'. Choose one of: {', '.join(PROVIDERS)}."
+        )
+    spec = PROVIDERS[provider]
+    model = config.get("model") or spec["default_model"]
+    return provider, spec, model
+
+
 def load_state(state_file):
     if os.path.exists(state_file):
         try:
@@ -111,54 +151,97 @@ def get_repo_diff(repo_path, state):
         print(f"Skipping {repo_path}: {e}")
         return None
 
-def summarize_with_gpt(client, repo_info):
+SYSTEM_PROMPT = f"""You are a technical writer producing a factual change summary for a \
+personal multi-repository newsletter. You are given the new commits and the combined git diff \
+for a single repository. Summarize only what the commits and diff actually show.
+
+Follow these rules exactly:
+
+1. Output Markdown only. Do NOT wrap the whole answer in a ```markdown fence. Use inline code
+   formatting (single backticks) for identifiers such as file paths, symbols and commands.
+2. Start directly with the first fact. Never add an introductory sentence, a heading such as
+   "New Features", a "Summary:" label, or any closing remark.
+3. Report facts only. Never speculate, never say a detail "is not provided", "is unclear" or
+   "cannot be determined", and never offer opinions or recommendations.
+4. Write the report as bullet points. Indent nested bullets with exactly 3 spaces and leave a
+   blank line between top-level bullet groups.
+5. Report every new feature, capability, API, tool, skill or notable content addition.
+6. Do NOT mention bug fixes, maintenance, refactors, version bumps, dependency updates, CI/CD,
+   documentation-only edits, or formatting/whitespace changes.
+7. If the changes contain nothing covered by rule 5, reply with exactly this line and nothing
+   else: "{NOTHING_NOTABLE}"
+
+Worked example
+--------------
+Given a diff that adds a `--json` flag and removes a retry loop, the correct output is:
+
+- Added the `--json` flag to emit machine-readable output.
+
+The incorrect output would mention the removed retry loop, add a "Changes" heading, or claim
+that some information "was not provided". Match the correct style.
+"""
+
+
+def build_client(config):
+    """Create an OpenAI SDK client for the configured provider."""
+    provider, spec, _ = resolve_provider_model(config)
+    api_key = os.getenv(spec["api_key_env"])
+    if not api_key:
+        raise SystemExit(
+            f"Missing {spec['api_key_env']} for provider '{provider}'. "
+            "Add it to your .env file (see env_template)."
+        )
+    kwargs = {"api_key": api_key}
+    if spec["base_url"]:
+        kwargs["base_url"] = spec["base_url"]
+    return OpenAI(**kwargs)
+
+
+def build_user_message(repo_info):
+    return f"""Repository: {repo_info['name']}
+URL: {repo_info['url']}
+Date of analysis: {repo_info['date']}
+
+New commits:
+{repo_info['commits']}
+
+Combined diff:
+{repo_info['diff'][:MAX_DIFF_CHARS]}"""
+
+
+def summarize_with_model(client, config, repo_info):
     if not repo_info['diff'].strip() and not repo_info['commits'].strip():
-        return "No significant changes found between specified commits."
+        return NOTHING_NOTABLE
 
-    prompt = f"""
-    You are a technical writer. Summarize the changes for the repository '{repo_info['name']}'.
-    Repository URL: {repo_info['url']}
-    Date of Analysis: {repo_info['date']}
+    _, spec, model = resolve_provider_model(config)
 
-    Below is the list of new commits and the combined diff. 
-    Use this information to provide a natural-language summary of what changed.
+    request = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": build_user_message(repo_info)},
+        ],
+    }
 
-    NEW COMMITS:
-    {repo_info['commits']}
+    effort = config.get("reasoning_effort")
+    if effort:
+        request["reasoning_effort"] = effort
+    if spec["extra_body"]:
+        request["extra_body"] = spec["extra_body"]
 
-    DIFF DATA:
-    {repo_info['diff'][:4000]} # Truncated to avoid token limits
+    response = client.chat.completions.create(**request)
+    content = (response.choices[0].message.content or "").strip()
+    return content or NOTHING_NOTABLE
 
-    Instructions:
-    1. Use Markdown formatting.
-       - Leave a blank line between list bocks.
-       - Indent lists with at least 3 spaces.
-       - Don't use the ```markdown\n...``` format tag for the summary.
-          - If considering to do so at all, do it only for embedded information.
-    2. Provide a natural-language breakdown of what changed.
-    3. Avoid adding a generic summary at the beginning and/or at the end of the update.
-    4. Focus on the facts and the specifics.
-       - Prefer bullet point lists.
-       - Don't opine.
-       - Don't speculate.
-    5. Do NOT include any updates about
-       - bug fixes
-       - maintenance tasks
-       - version bumps
-       - CD/CI workflow updates.
-    6. DO include updates about new features.
-    """
-
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=[{"role": "user", "content": prompt}]
-    )
-    return response.choices[0].message.content
 
 def main():
     config = load_config()
     state_file = config.get('state_file', ".newspyper_state.json")
-    client = OpenAI()
+
+    provider, _, model = resolve_provider_model(config)
+    client = build_client(config)
+    print(f"Provider: {provider} | Model: {model}")
+
     state = load_state(state_file)
 
     blacklist = config.get('blacklist', []) or []
@@ -194,18 +277,21 @@ def main():
         if repo_data:
             if repo_name not in blacklisted_names:
                 if (repo_data['diff'] and repo_data['diff'].strip()) or (repo_data['commits'] and repo_data['commits'].strip()):
-                    summary = summarize_with_gpt(client, repo_data)
-                    final_report += f"## {repo_data['name']}\n"
-                    final_report += f"**Remote:** {repo_data['url']}\n\n"
-                    final_report += f"{summary}\n\n"
-                    final_report += "---\n\n"
-                    has_changes = True
+                    summary = summarize_with_model(client, config, repo_data)
+                    if summary.rstrip('.').strip().lower() == NOTHING_NOTABLE.rstrip('.').lower():
+                        print(f"  No notable changes in {repo_name}.")
+                    else:
+                        final_report += f"## {repo_data['name']}\n"
+                        final_report += f"**Remote:** {repo_data['url']}\n\n"
+                        final_report += f"{summary}\n\n"
+                        final_report += "---\n\n"
+                        has_changes = True
             
             # Update state with the latest commit
             state[repo_data['name']] = repo_data['current_commit']
 
     if not has_changes:
-        final_report += "No new commits across all tracked repositories.\n"
+        final_report += "No notable changes across all tracked repositories.\n"
 
     if blacklisted_names:
         final_report += "\n## Excluded repositories\n"

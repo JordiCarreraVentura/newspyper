@@ -7,6 +7,19 @@ output_path: "./summaries/weekly_summary.md"
 # System settings
 open_on_complete: false
 
+# LLM provider: "openai" or "deepseek"
+provider: openai
+
+# Model to use. Leave commented out to use the provider default.
+#   openai   -> gpt-6.1-sol
+#   deepseek -> deepseek-v4-pro
+# model: gpt-6.1-sol
+
+# Reasoning effort passed to the model (optional, provider-dependent).
+#   openai:   low | medium | high | xhigh | max
+#   deepseek: none | low | high | max
+reasoning_effort: low
+
 # Path to the state file (JSON) that tracks the last checked commit per repo
 state_file: ".newspyper_state.json"
 

@@ -1,1 +1,7 @@
+# OpenAI key (https://platform.openai.com/api-keys)
+# Required when `provider: openai` in config.yaml
 OPENAI_API_KEY=
+
+# DeepSeek key (https://platform.deepseek.com/api_keys)
+# Required when `provider: deepseek` in config.yaml
+DEEPSEEK_API_KEY=

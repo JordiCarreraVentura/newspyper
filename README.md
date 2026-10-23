@@ -9,7 +9,9 @@ Consider the folder of repositories shown below. `newspyper`
 1. Starts with a YAML config file where the user can specify the location of this source folder.
 2. Tracks the last processed commit for each repository using a state file (`.newspyper_state.json`).
 3. On each run, collects all new commits and the combined diff since the last execution.
-4. Sends the commit history and diff, along with repository information (name, URL) and date, to OpenAI's GPT-4o to generate a natural-language summary.
+4. Sends the commit history and diff, along with repository information (name, URL) and date, to
+   the configured LLM (OpenAI `gpt-6.1-sol` by default, or DeepSeek `deepseek-v4-pro`) to
+   generate a natural-language summary.
 5. Concatenates all summaries into a single Markdown report, organized by repository.
 6. Saves the summary to a timestamped file (e.g., `weekly_summary_2024-04-29.md`).
 7. Optionally opens the report automatically on Mac.
@@ -41,8 +43,13 @@ repos
    4. Optional: set `inactive_days` (default: 90) to be alerted about repositories that
       haven't been updated in the last N days. They are listed in the report's
       "Inactive repositories" section.
+   5. Choose the LLM with `provider`: `openai` (default) or `deepseek`.
+      - `model` is optional; it falls back to the provider default (`gpt-6.1-sol` for OpenAI,
+        `deepseek-v4-pro` for DeepSeek).
+      - `reasoning_effort` is optional and provider-dependent (`low`/`medium`/`high`/`xhigh`/`max`
+        for OpenAI, `none`/`low`/`high`/`max` for DeepSeek).
 2. Duplicate `env_template` as `.env`.
-   -  Set the value of the OpenAI API key.
+   - Set the API key for the provider you selected: `OPENAI_API_KEY` and/or `DEEPSEEK_API_KEY`.
 3. Run `make install`.
 4. Run `make run`.
 
@@ -57,3 +64,8 @@ repos
 
 1. Added support for **Ubuntu** systems in `open_on_complete`.
 2. Added an alert about repositories that **haven't updated recently**.
+3. Upgraded the default OpenAI model to **`gpt-6.1-sol`** (from `gpt-4o`).
+4. Added **DeepSeek** (`deepseek-v4-pro`) as a selectable provider via `provider`/`model` in
+   `config.yaml` and `DEEPSEEK_API_KEY` in `.env`.
+5. Reworked the prompt (dedicated system message with a worked example) for **stricter
+   instruction-following**, and raised the diff budget from 4 000 to 40 000 characters.
